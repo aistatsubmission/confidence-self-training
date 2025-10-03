@@ -205,7 +205,6 @@ def gradual_self_training_class( diss_func=make_moon_data,
     h_prev = train_classifier(X0, y0)
 
     phi_list, eps_list, rho_list = [], [], []
-    q= [0.3, 0.4,0.5, 0.6,0.7, 0.75, 0.8 ,0.85,  0.9 , 0.95]
     for k in range(1, K+1):
         # Unlabeled batch from domain μ_k
         angle = np.pi/2 * (k / K)    # gradual angle shift up to 45°
