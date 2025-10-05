@@ -155,6 +155,7 @@ def conf_margin_gst(diss_func=make_moon_data,
         diff_curr = abs(over_true_curr - over_pseudo_curr)
 
         eps_k = max(diff_prev, diff_curr)
+        print(f"Step {k}: phi_k = {phi_k}, eps_k = {eps_k}, rho_k = {rho_k}")
         if (plot):
             if k in [1, 5, 10, 20, 45]:  # pick rounds you want to visualize
                 plot_decision_boundary(h_prev, Xk, yk, A,
@@ -199,7 +200,11 @@ def conf_margin_gst_perclassfiltering( diss_func=make_moon_data,
     X0 = scaler.transform(X0)
     h_prev = train_classifier(X0, y0)
 
-    phi_list, eps_list, rho_list = [], [], []
+    # Prepare target (final) domain for evaluation
+    X_target, y_target = diss_func(n_per_domain, angle=np.pi/2, seed=seed + K + 1)
+    X_target = scaler.transform(X_target)
+    phi_list, eps_list, rho_list , curr_acc_list, target_acc_list = [], [], [] ,[] , []
+
     for k in range(1, K+1):
         # Unlabeled batch from domain μ_k
         angle = np.pi/2 * (k / K)    # gradual angle shift up to 45°
@@ -244,6 +249,13 @@ def conf_margin_gst_perclassfiltering( diss_func=make_moon_data,
         diff_curr = abs(over_true_curr - over_pseudo_curr)
 
         eps_k = max(diff_prev, diff_curr)
+
+        # -------- Accuracy calculations --------
+        acc_curr = 1 - zero_one(h_curr.predict(Xk), yk).mean()            # on current domain
+        acc_target = 1 - zero_one(h_curr.predict(X_target), y_target).mean()  # on target domain
+
+        print(f"Step {k}: phi_k={phi_k:.3f}, eps_k={eps_k:.3f}, rho_k={rho_k:.3f}, "
+              f"ACC_curr={acc_curr:.3f}, ACC_target={acc_target:.3f}")
         if (plot):
             if k in [1, 3, 5, 10, 20]:  # pick rounds you want to visualize
                 plot_decision_boundary(h_prev, Xk, yk, A, #  h_prev or  h_curr? or both ?
@@ -254,33 +266,38 @@ def conf_margin_gst_perclassfiltering( diss_func=make_moon_data,
         phi_list.append(phi_k)
         eps_list.append(eps_k)
         rho_list.append(rho_k)
+        curr_acc_list.append(acc_curr)
+        target_acc_list.append(acc_target)
 
         h_prev = h_curr
 
-    return np.array(phi_list), np.array(eps_list), np.array(rho_list)
+    return np.array(phi_list), np.array(eps_list), np.array(rho_list), np.array(curr_acc_list), np.array(target_acc_list)
 
 
 def run_multi_seed(diss_func, K=45, n_per_domain=100, filter_type="confidence", c=0.5, n_seeds=10):
-    all_phi, all_eps, all_rho = [], [], []
+    all_phi, all_eps, all_rho, all_acc = [], [], []
     for seed in range(n_seeds):
-        phi, eps, rho = conf_margin_gst_perclassfiltering(diss_func=diss_func,
+        phi, eps, rho , curr_acc, target_acc = conf_margin_gst_perclassfiltering(diss_func=diss_func,
             K=K, n_per_domain=n_per_domain, filter_type=filter_type, c=c, seed=seed, plot=False
         )
         all_phi.append(phi)
         all_eps.append(eps)
         all_rho.append(rho)
+        all_acc.append(target_acc)
 
     # convert to arrays (n_seeds × K)
     all_phi = np.vstack(all_phi)
     all_eps = np.vstack(all_eps)
     all_rho = np.vstack(all_rho)
+    all_acc = np.vstack(all_acc)
 
     # compute mean and std across seeds
     phi_mean, phi_std = all_phi.mean(axis=0), all_phi.std(axis=0)
     eps_mean, eps_std = all_eps.mean(axis=0), all_eps.std(axis=0)
     rho_mean, rho_std = all_rho.mean(axis=0), all_rho.std(axis=0)
+    acc_mean, acc_std = all_acc.mean(axis=0), all_acc.std(axis=0)
 
-    return phi_mean, eps_mean, rho_mean, phi_std, eps_std, rho_std
+    return phi_mean, eps_mean, rho_mean, acc_mean, phi_std, eps_std, rho_std, acc_std
 
 
 # ----------------------------
@@ -288,7 +305,7 @@ def run_multi_seed(diss_func, K=45, n_per_domain=100, filter_type="confidence", 
 # ----------------------------
 K = 20
 
-diss = make_moon_data  #disstribution func can be make_gaussian_data or make make_moon_data
+diss = make_moon_data  #distribution func can be make_gaussian_data or make make_moon_data
 
-psi_conf, eps_conf, rho_conf = conf_margin_gst_perclassfiltering(diss_func= diss, K=K,n_per_domain=1000, filter_type="confidence", c=0.5, plot=True)
-psi_margin, eps_margin, rho_margin = conf_margin_gst_perclassfiltering(diss_func=diss, K=K,n_per_domain=1000, filter_type="margin" , c=0.7, plot=True)
+psi_conf, eps_conf, rho_conf , curr_acc_conf, target_acc_conf = conf_margin_gst_perclassfiltering(diss_func= diss, K=K,n_per_domain=1000, filter_type="confidence", c=0.5, plot=True)
+psi_margin, eps_margin, rho_margin, curr_acc_margin, target_acc_margin= conf_margin_gst_perclassfiltering(diss_func=diss, K=K,n_per_domain=1000, filter_type="margin" , c=0.7, plot=True)
