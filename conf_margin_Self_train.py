@@ -176,7 +176,7 @@ def conf_margin_gst_perclassfiltering( diss_func=make_moon_data,
               f"ACC_curr={acc_curr:.3f}, ACC_target={acc_target:.3f}")
         if (plot):
             if k in [1, 3, 5, 10, 20]:  # pick rounds you want to visualize
-                plot_decision_boundary(h_prev, Xk, yk, A, #  h_prev or  h_curr? or both ?
+                plot_decision_boundary(h_prev, Xk, yk, A, #  plot previous classifier or current classifier
                     title = f"Round {k}: Decision boundary ($h_{{{k-1}}}$ on $\\mu_{{{k}}}$)",
                     fname = f"./new/decision_boundary_{filter_type}_round{k}.png")
 
