@@ -193,7 +193,7 @@ def conf_margin_gst_perclassfiltering( diss_func=make_moon_data,
 
 
 def run_multi_seed(diss_func, K=45, n_per_domain=100, filter_type="confidence", c=0.5, n_seeds=10):
-    all_phi, all_eps, all_rho, all_acc = [], [], []
+    all_phi, all_eps, all_rho, all_acc = [], [], [], []
     for seed in range(n_seeds):
         phi, eps, rho , curr_acc, target_acc = conf_margin_gst_perclassfiltering(diss_func=diss_func,
             K=K, n_per_domain=n_per_domain, filter_type=filter_type, c=c, seed=seed, plot=False
