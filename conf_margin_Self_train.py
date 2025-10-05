@@ -5,17 +5,14 @@ from sklearn.metrics import log_loss
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import shuffle
 from scipy.special import softmax
-
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from scipy.special import softmax
 
-# --- data + model helpers (same as before) ---
 
 from sklearn.datasets import make_moons
 
-# --- new data generator for Appendix experiment ---
 def make_moon_data(n=500, angle=0.0, seed=0):
     """
     Generates rotated two-moon data to mimic gradual domain shift.
@@ -40,10 +37,6 @@ def make_gaussian_data(n=500, angle=0.0, seed=0):
     y = np.array([0]*n + [1]*n)
     return X, y
 
-#def train_classifier(X, y):
-#    clf = LogisticRegression(max_iter=200)
-#    clf.fit(X, y)
-#    return clf
 
 from sklearn.svm import SVC
 
@@ -67,8 +60,7 @@ def scores_preds(clf, X):
 # 0-1 loss
 def zero_one(preds, labels):
     return (preds != labels).astype(float)
-import numpy as np
-import matplotlib.pyplot as plt
+
 
 # --- helper to plot decision boundary ---
 def plot_decision_boundary(clf, X, y_true, accepted_mask, title, fname=None):
@@ -99,9 +91,9 @@ def plot_decision_boundary(clf, X, y_true, accepted_mask, title, fname=None):
     plt.show()
 
 # ---------------------------------------------------------
-# GDA loop with CORRECT epsilon per your Definition (masked risks)
+# GDA loop with conf and margin filtering
 # ---------------------------------------------------------
-def gradual_self_training(diss_func=make_moon_data,
+def conf_margin_gst(diss_func=make_moon_data,
     K=20, n_per_domain=300, filter_type="confidence", c=0.5, seed=0 , plot=False
 ):
     # Source (labeled)
@@ -178,6 +170,7 @@ def gradual_self_training(diss_func=make_moon_data,
         h_prev = h_curr
 
     return np.array(phi_list), np.array(eps_list), np.array(rho_list)
+    
 def per_class_accept(scores, preds, qk, min_frac=0.10):
     """
     Accepts at least min_frac per predicted class, 
@@ -194,8 +187,10 @@ def per_class_accept(scores, preds, qk, min_frac=0.10):
         order = idx[np.argsort(-scores[idx])]
         mask[order[:k_keep]] = True
     return mask
-
-def gradual_self_training_class( diss_func=make_moon_data,
+# ---------------------------------------------------------
+# GDA loop with conf and margin filtering - with min 10% per class retention 
+# ---------------------------------------------------------
+def conf_margin_gst_perclassfiltering( diss_func=make_moon_data,
     K=20, n_per_domain=300, filter_type="confidence", c=0.5, seed=0, plot=False
 ):
     # Source (labeled)
@@ -268,7 +263,7 @@ def gradual_self_training_class( diss_func=make_moon_data,
 def run_multi_seed(diss_func, K=45, n_per_domain=100, filter_type="confidence", c=0.5, n_seeds=10):
     all_phi, all_eps, all_rho = [], [], []
     for seed in range(n_seeds):
-        phi, eps, rho = gradual_self_training_class(diss_func=diss_func,
+        phi, eps, rho = conf_margin_gst_perclassfiltering(diss_func=diss_func,
             K=K, n_per_domain=n_per_domain, filter_type=filter_type, c=c, seed=seed, plot=False
         )
         all_phi.append(phi)
@@ -289,11 +284,11 @@ def run_multi_seed(diss_func, K=45, n_per_domain=100, filter_type="confidence", 
 
 
 # ----------------------------
-# 4. Run experiment
+# Run experiment
 # ----------------------------
 K = 20
 
-diss = make_moon_data  #diss_func can be make_gaussian_data or make make_moon_data
+diss = make_moon_data  #disstribution func can be make_gaussian_data or make make_moon_data
 
-phi_conf, eps_conf, rho_conf = gradual_self_training_class(diss_func= diss, K=K,n_per_domain=1000, filter_type="confidence", c=0.5, plot=True)
-phi_margin, eps_margin, rho_margin = gradual_self_training_class(diss_func=diss, K=K,n_per_domain=1000, filter_type="margin" , c=0.7, plot=True)
+psi_conf, eps_conf, rho_conf = conf_margin_gst_perclassfiltering(diss_func= diss, K=K,n_per_domain=1000, filter_type="confidence", c=0.5, plot=True)
+psi_margin, eps_margin, rho_margin = conf_margin_gst_perclassfiltering(diss_func=diss, K=K,n_per_domain=1000, filter_type="margin" , c=0.7, plot=True)
